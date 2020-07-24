@@ -1,5 +1,5 @@
 #!/bin/sh
-set -x
+#set -x
 
 
 while :; do
@@ -46,6 +46,15 @@ echo "set log to $level on $target with TLS $tls"
 
 auth="Administrator:test"
 
+rm cookies
+curl -k -s -D headers -b cookies -c cookies https://$target > /dev/null
+curl -k -s -D headers -b cookies -c cookies -L https://$target/j_security_check -d 'j_username=Administrator' -d 'j_password=test' > /dev/null
 
-curl -i -k -u Administrator:test https://$target/logAndTrace -X POST -F "action=setLogSettings" -F "sccLogLevel=$level" -F "therLogLevel"="3" -F 'cpicTraceLevel=0' -F 'payloadTrace=false'
-curl -i -k -u Administrator:test https://$target/admin -X POST -F "action=modifyPropsIni" -F "sslTrace=$tls"
+csrf=`sed $'s/\r$//' headers | sed -n "s/X-CSRF-Token: \(.*\)/\1/p"`
+#echo "using $csrf"
+
+printf "set log "
+curl -k -b cookies -D headers -H "X-CSRF-Token: $csrf" https://$target/logAndTrace -X POST -d "action=setLogSettings" -d "sccLogLevel=$level" -d "otherLogLevel"="3" -d 'cpicTraceLevel=0' -d 'payloadTrace=false'
+printf "\nset ssl "
+curl -k -b cookies -D headers -H "X-CSRF-Token: $csrf" https://$target/admin -X POST -d "action=modifyPropsIni" -d "sslTrace=$tls"
+printf "\n"
